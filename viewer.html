@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AR View</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Google's model-viewer -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #0a0a15;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a15 100%);
+            --poster-color: #0a0a15;
+            --progress-bar-color: #3ecf8e;
+            --progress-bar-height: 4px;
+        }
+
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 100%);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            padding: 20px;
+        }
+
+        .loader-container {
+            text-align: center;
+            max-width: 280px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #3ecf8e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 25px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #3ecf8e, #00b4d8);
+            transition: width 0.2s ease;
+            border-radius: 10px;
+        }
+
+        #loading-percent {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #3ecf8e, #00b4d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        #loading-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Controls Bar */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: none;
+            /* Let clicks pass through around buttons */
+        }
+
+        .control-btn {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .variant-select {
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* AR button */
+        .ar-button {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #3ecf8e, #00b4d8);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 35px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(62, 207, 142, 0.4);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ar-button:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .model-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+            padding: 15px 20px 40px;
+            color: white;
+            z-index: 90;
+            pointer-events: none;
+        }
+
+        .model-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .tips-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 200;
+            text-align: center;
+        }
+
+        .tips-toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-overlay">
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <div id="loading-percent">0%</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p id="loading-text">Connecting...</p>
+        </div>
+    </div>
+
+    <div id="model-header" class="model-header hidden">
+        <h1 id="model-name">3D Model</h1>
+        <p id="model-desc"></p>
+    </div>
+
+    <div id="tips-toast" class="tips-toast">
+        👆 Drag to rotate • 🤏 Pinch to scale
+    </div>
+    <!-- 3D Viewer -->
+    <model-viewer id="ar-viewer" src="" ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto" ar-placement="floor"
+        camera-controls touch-action="pan-y" auto-rotate rotation-per-second="10deg" shadow-intensity="1"
+        shadow-softness="1" environment-image="neutral" exposure="1" tone-mapping="aces" alt="3D Model" loading="eager"
+        reveal="auto">
+
+        <button slot="ar-button" class="ar-button" id="ar-btn">
+            <span>📍 View in AR</span>
+        </button>
+    </model-viewer>
+
+    <!-- Controls Bar -->
+    <div class="controls hidden" id="controls">
+        <!-- Variant Picker (Dynamic) -->
+        <select id="variant-select" class="variant-select hidden"></select>
+
+        <!-- Animation Toggle -->
+        <button class="control-btn hidden" id="anim-btn" title="Play/Pause Animation">
+            ▶️
+        </button>
+
+        <!-- Reset View -->
+        <button class="control-btn" id="reset-btn" title="Reset View">
+            ↺
+        </button>
+    </div>
+
+    <script type="module">
+        import { api } from './assets/js/api.js';
+
+        async function initViewer() {
+            const params = new URLSearchParams(window.location.search);
+            const modelId = params.get('id');
+            const overlay = document.getElementById('loading-overlay');
+            const viewer = document.getElementById('ar-viewer');
+            const modelHeader = document.getElementById('model-header');
+            const controls = document.getElementById('controls');
+            const variantSelect = document.getElementById('variant-select');
+            const animBtn = document.getElementById('anim-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const tipsToast = document.getElementById('tips-toast');
+
+            const progressBar = document.getElementById('progress-bar');
+            const loadingPercent = document.getElementById('loading-percent');
+            const loadingText = document.getElementById('loading-text');
+
+            if (!modelId) {
+                overlay.innerHTML = '<p style="text-align:center; color:#ff6b6b">❌ No model ID specified</p>';
+                return;
+            }
+
+            try {
+                loadingText.textContent = 'Fetching info...';
+
+                const { data: model, error } = await api.models.get(modelId);
+                if (error || !model) throw new Error("Model not found");
+
+                const publicUrl = api.getModelUrl(model.storage_path);
+                console.log("Loading:", publicUrl);
+
+                document.getElementById('model-name').textContent = model.name || '3D Model';
+                document.getElementById('model-desc').textContent = model.description || '';
+
+                loadingText.textContent = 'Downloading...';
+
+                viewer.addEventListener('progress', (e) => {
+                    const percent = Math.round(e.detail.totalProgress * 100);
+                    progressBar.style.width = percent + '%';
+                    loadingPercent.textContent = percent + '%';
+                    if (percent > 90) loadingText.textContent = 'Formatting...';
+                });
+
+                viewer.src = publicUrl;
+
+                viewer.addEventListener('load', () => {
+                    overlay.classList.add('hidden');
+                    modelHeader.classList.remove('hidden');
+                    controls.classList.remove('hidden');
+
+                    // Show interaction tips briefly
+                    tipsToast.classList.add('show');
+                    setTimeout(() => tipsToast.classList.remove('show'), 3000);
+
+                    // Check for variants
+                    const variants = viewer.availableVariants;
+                    if (variants && variants.length > 0) {
+                        variantSelect.innerHTML = variants.map(name => `<option value="${name}">${name}</option>`).join('');
+                        variantSelect.classList.remove('hidden');
+                        variantSelect.addEventListener('change', (e) => {
+                            viewer.variantName = e.target.value;
+                        });
+                    }
+
+                    // Check for animations
+                    const animations = viewer.availableAnimations;
+                    if (animations && animations.length > 0) {
+                        animBtn.classList.remove('hidden');
+                        let isPlaying = true; // Auto-rotate implies movement, but animation is separate
+
+                        // Default to playing if animations exist
+                        viewer.play();
+                        animBtn.textContent = '⏸️';
+
+                        animBtn.addEventListener('click', () => {
+                            if (viewer.paused) {
+                                viewer.play();
+                                animBtn.textContent = '⏸️';
+                            } else {
+                                viewer.pause();
+                                animBtn.textContent = '▶️';
+                            }
+                        });
+                    }
+                });
+
+                resetBtn.addEventListener('click', () => {
+                    viewer.cameraOrbit = '0deg 75deg 105%';
+                    viewer.fieldOfView = 'auto';
+                });
+
+                api.models.incrementView(modelId);
+
+            } catch (err) {
+                console.error(err);
+                overlay.innerHTML = `<p style="text-align:center; color:#ff6b6b">❌ ${err.message}</p>`;
+            }
+        }
+
+        initViewer();
+    </script>
+</body>
+
+</html>

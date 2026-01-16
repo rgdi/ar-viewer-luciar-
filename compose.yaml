@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "80:3000"
+    volumes:
+      - ./server/uploads:/app/server/uploads
+      - ./server/database.sqlite:/app/server/database.sqlite
+    environment:
+      - CORS_ORIGIN=*
+      - JWT_SECRET=change_this_secret_in_production
+    restart: unless-stopped
