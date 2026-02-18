@@ -1,12 +1,23 @@
 services:
   app:
     build: .
+    container_name: ar-viewer
     ports:
       - "80:3000"
     volumes:
-      - ./server/uploads:/app/server/uploads
-      - ./server/database.sqlite:/app/server/database.sqlite
+      - ar_data:/app/server/data
     environment:
       - CORS_ORIGIN=*
       - JWT_SECRET=change_this_secret_in_production
+      - DATA_DIR=/app/server/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ar_data:
+    driver: local

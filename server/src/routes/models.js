@@ -2,11 +2,10 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
-import db from '../database.js';
+import db, { dataDir } from '../database.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-do-not-use-in-prod';
@@ -26,10 +25,11 @@ const requireAuth = (req, res, next) => {
     }
 };
 
-// Config Multer
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// __dirname is server/src/routes, so we need to go up two levels to server/
-const uploadsRoot = path.join(__dirname, '../../uploads');
+// Config Multer — uploads go into the data directory (Docker volume)
+const uploadsRoot = path.join(dataDir, 'uploads');
+if (!fs.existsSync(uploadsRoot)) {
+    fs.mkdirSync(uploadsRoot, { recursive: true });
+}
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {

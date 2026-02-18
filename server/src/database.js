@@ -5,7 +5,14 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, '../database.sqlite');
+
+// Use DATA_DIR env var for persistence in Docker volumes
+const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = path.join(dataDir, 'database.sqlite');
 
 // Create DB instance
 const db = new Database(dbPath);
@@ -36,7 +43,8 @@ export function initDb() {
         )
     `);
 
-    console.log("Database initialized");
+    console.log(`Database initialized at ${dbPath}`);
 }
 
+export { dataDir };
 export default db;

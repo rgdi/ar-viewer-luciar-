@@ -1,0 +1,14 @@
+.git
+.gitignore
+node_modules
+server/node_modules
+server/data
+server/uploads
+server/database.sqlite
+server/database.sqlite-shm
+server/database.sqlite-wal
+*.md
+.DS_Store
+.env
+dist
+coverage

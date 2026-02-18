@@ -1,78 +1,66 @@
 # AR Code Manager
 
-A complete web platform for uploading 3D models (`.glb`), generating unique QR codes, and viewing them in Augmented Reality (AR) directly in the browser.
+Upload 3D models (`.glb`), generate QR codes, and view them in Augmented Reality — all from your browser.
 
-## 🚀 Features
+## 🚀 Quick Start (Docker)
 
--   **3D Model Upload**: Support for `.glb` (Binary glTF) files with progress tracking.
--   **AR Viewer**: Built-in web-based AR viewer compatible with modern mobile browsers.
--   **QR Code Generation**: Automatically generates QR codes linking to the AR experience.
--   **Dashboard**: Manage your uploaded models and view their details.
--   **Authentication**: Secure login and signup system.
--   **Responsive Design**: Modern, dark-themed UI optimized for desktop and mobile.
+```bash
+git clone https://github.com/rgdi/ar-viewer-luciar-.git
+cd ar-viewer-luciar-
+docker compose up --build -d
+```
 
-## 🛠️ Tech Stack
+**That's it.** Open [http://localhost](http://localhost) in your browser.
 
-**Frontend:**
--   HTML5, CSS3 (Custom Dark Theme)
--   Vanilla JavaScript (ES6+)
--   [Supabase](https://supabase.com/) (Authentication & Database)
--   [QRCode.js](https://github.com/davidshimjs/qrcodejs) (QR Generation)
+## Features
 
-**Backend:**
--   [Node.js](https://nodejs.org/) & [Express](https://expressjs.com/)
--   [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) (Local Database)
--   Multer (File Uploads)
+- **Upload .glb models** with progress tracking
+- **AR Viewer** — tap "View in AR" on any mobile browser
+- **QR Code Generator** — scan to view models in AR instantly
+- **User Authentication** — JWT-based signup/login
+- **Dashboard** — manage all your uploaded 3D models
+- **Dark Theme** — modern responsive UI
 
-**DevOps:**
--   [Docker](https://www.docker.com/) & Docker Compose
+## Architecture
 
-## 📦 Installation & Setup
+| Component | Technology |
+|-----------|-----------|
+| Frontend | HTML5, CSS3, Vanilla JS |
+| Backend | Node.js, Express |
+| Database | SQLite (WAL mode) |
+| AR Engine | Google model-viewer |
+| Auth | JWT + bcrypt |
+| Container | Docker + Docker Compose |
 
-### Option 1: Docker (Recommended)
+## Ports
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/rgdi/ar-viewer-luciar-.git
-    cd ar-viewer-luciar-
-    ```
+| Service | URL |
+|---------|-----|
+| App | `http://localhost` (port 80) |
+| API | `http://localhost/api` |
+| Health | `http://localhost/health` |
 
-2.  **Run with Docker Compose:**
-    ```bash
-    docker compose up --build
-    ```
+## Data Persistence
 
-3.  **Access the App:**
-    -   Frontend/App: `http://localhost:80`
-    -   Server API: `http://localhost:3000`
+All data (database + uploaded models) is stored in a Docker named volume `ar_data`. Your data survives container restarts and rebuilds.
 
-### Option 2: Local Development
+```bash
+# Stop without losing data
+docker compose down
 
-1.  **Install Server Dependencies:**
-    ```bash
-    cd server
-    npm install
-    ```
+# Stop AND delete all data
+docker compose down -v
+```
 
-2.  **Start the Server:**
-    ```bash
-    npm run dev
-    ```
+## Environment Variables
 
-3.  **Serve the Frontend:**
-    You can use any static file server (e.g., Live Server in VS Code) to serve the root directory.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET` | `change_this_secret_in_production` | Token signing secret |
+| `CORS_ORIGIN` | `*` | Allowed CORS origins |
 
-## 📝 Environment Variables
+Edit these in `compose.yaml` for production use.
 
-The application comes with default configuration for development. For production, ensure you update the following in `compose.yaml` or your `.env` file:
+## License
 
--   `CORS_ORIGIN`: Allowed origins for API requests.
--   `JWT_SECRET`: Secret key for signing authentication tokens.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT

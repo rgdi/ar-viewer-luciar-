@@ -7,7 +7,6 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import fs from 'fs';
 
 // Load env vars
 dotenv.config();
@@ -17,40 +16,34 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Ensure uploads dir exists
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 // 1. Security Middleware
 app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow loading resources (models) from other origins if needed, or same origin
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://aframe.io", "https://raw.githack.com", "https://unpkg.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://unpkg.com", "https://www.gstatic.com"],
             connectSrc: ["'self'", "https://unpkg.com", "https://www.gstatic.com", "blob:", "data:"],
             fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
             workerSrc: ["'self'", "blob:"],
-            upgradeInsecureRequests: null, // Disable auto-upgrade to HTTPS for non-SSL servers
+            upgradeInsecureRequests: null,
         }
     }
 }));
 
-// 2. CORS (Configure strictly for production)
+// 2. CORS
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*', // TODO: User should lock this down in .env
+    origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 3. Rate Limiting (Prevent abuse)
+// 3. Rate Limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -63,14 +56,17 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 6. Serve Static Files (Models)
-app.use('/uploads', express.static(uploadDir));
+// 6. Database Init (must happen before routes that use it, and before serving uploads path)
+import { initDb, dataDir } from './database.js';
+initDb();
 
-// 7. Serve Frontend (Unified Deployment)
-// Serve assets
+// 7. Serve uploaded files from the data directory (Docker volume)
+const uploadsPath = path.join(dataDir, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
+// 8. Serve Frontend (Unified Deployment)
 app.use('/assets', express.static(path.join(__dirname, '../../assets')));
 
-// Serve HTML pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../../index.html'));
 });
@@ -81,11 +77,7 @@ app.get('/viewer.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../../viewer.html'));
 });
 
-// 7. Database Init (Moved down to keep order logical)
-import { initDb } from './database.js';
-initDb();
-
-// 8. Routes
+// 9. Routes
 import authRoutes from './routes/auth.js';
 import modelRoutes from './routes/models.js';
 
@@ -104,7 +96,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Uploads directory: ${uploadDir}`);
+    console.log(`Data directory: ${dataDir}`);
 });
